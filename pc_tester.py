@@ -1,103 +1,123 @@
 import psutil
 import platform
-import socket
 import time
+import math
 from datetime import datetime
-try:
-    import GPUtil
-    GPU_AVAILABLE = True
-except ImportError:
-    GPU_AVAILABLE = False
 
-print("=== PC Tester & Benchmark Tool ===")
-print(f"Run at: {datetime.now()}")
-print("="*50)
+print("="*60)
+print("PC TESTER - System Information & Benchmark")
+print("="*60)
+print(f"Test started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print()
 
-# System Info
-def get_system_info():
-    print("\n--- System Information ---")
-    print(f"OS: {platform.system()} {platform.release()} ({platform.version()})")
-    print(f"Computer Name: {socket.gethostname()}")
-    print(f"Processor: {platform.processor()}")
-    print(f"Machine: {platform.machine()}")
-    print(f"Python Version: {platform.python_version()}")
+# OS Info
+def get_os_info():
+    return {
+        'OS': platform.system() + ' ' + platform.release(),
+        'Version': platform.version(),
+        'Machine': platform.machine(),
+        'Processor': platform.processor()
+    }
 
 # CPU Info
 def get_cpu_info():
-    print("\n--- CPU Information ---")
-    print(f"Physical cores: {psutil.cpu_count(logical=False)}")
-    print(f"Total cores: {psutil.cpu_count(logical=True)}")
-    print(f"CPU Frequency: {psutil.cpu_freq().current:.2f} MHz")
-    print(f"CPU Usage: {psutil.cpu_percent(interval=1)}%")
+    cpu = {
+        'Physical cores': psutil.cpu_count(logical=False),
+        'Total cores': psutil.cpu_count(logical=True),
+        'Max Frequency': f"{psutil.cpu_freq().max:.2f} MHz" if psutil.cpu_freq() else 'N/A',
+        'Current Frequency': f"{psutil.cpu_freq().current:.2f} MHz" if psutil.cpu_freq() else 'N/A',
+        'CPU Usage': f"{psutil.cpu_percent(interval=1)}%"
+    }
+    return cpu
 
-# Memory
+# Memory Info
 def get_memory_info():
-    print("\n--- Memory Information ---")
-    svmem = psutil.virtual_memory()
-    print(f"Total: {svmem.total / (1024**3):.2f} GB")
-    print(f"Available: {svmem.available / (1024**3):.2f} GB")
-    print(f"Used: {svmem.used / (1024**3):.2f} GB")
-    print(f"Percentage: {svmem.percent}%")
+    mem = psutil.virtual_memory()
+    return {
+        'Total RAM': f"{mem.total / (1024**3):.2f} GB",
+        'Available RAM': f"{mem.available / (1024**3):.2f} GB",
+        'Used RAM': f"{mem.used / (1024**3):.2f} GB",
+        'Usage %': f"{mem.percent}%"
+    }
 
-# Disk
+# Disk Info
 def get_disk_info():
-    print("\n--- Disk Information ---")
-    partitions = psutil.disk_partitions()
-    for partition in partitions:
+    disks = []
+    for partition in psutil.disk_partitions():
         try:
             usage = psutil.disk_usage(partition.mountpoint)
-            print(f"Drive {partition.device} ({partition.fstype}): {usage.total / (1024**3):.2f} GB total, {usage.free / (1024**3):.2f} GB free")
+            disks.append({
+                'Device': partition.device,
+                'Mountpoint': partition.mountpoint,
+                'Total': f"{usage.total / (1024**3):.2f} GB",
+                'Free': f"{usage.free / (1024**3):.2f} GB",
+                'Used': f"{usage.used / (1024**3):.2f} GB",
+                'Usage %': f"{usage.percent}%"
+            })
         except:
             pass
+    return disks
 
-# GPU
-def get_gpu_info():
-    print("\n--- GPU Information ---")
-    if not GPU_AVAILABLE:
-        print("GPUtil not installed. Install with: pip install gputil")
-        return
-    try:
-        gpus = GPUtil.getGPUs()
-        if gpus:
-            for i, gpu in enumerate(gpus):
-                print(f"GPU {i}: {gpu.name}")
-                print(f"  Memory Total: {gpu.memoryTotal} MB")
-                print(f"  Memory Used: {gpu.memoryUsed} MB")
-                print(f"  Load: {gpu.load * 100:.1f}%")
-        else:
-            print("No NVIDIA GPU detected.")
-    except:
-        print("Error getting GPU info.")
-
-# Simple Benchmarks
-def run_benchmarks():
-    print("\n--- Running Simple Benchmarks ---")
-    # CPU Benchmark - Pi calculation
-    print("CPU Benchmark (Pi calculation)...")
+# Simple CPU Benchmark
+def cpu_benchmark():
+    print("Running CPU benchmark (Pi calculation)...")
     start = time.time()
-    def calculate_pi(n):
-        pi = 0.0
-        for k in range(n):
-            pi += 4 * ((-1)**k) / (2*k + 1)
-        return pi
-    calculate_pi(1000000)
-    cpu_time = time.time() - start
-    print(f"Time for Pi calc: {cpu_time:.4f} seconds")
-    
-    # Memory benchmark
-    print("Memory Benchmark (list creation)...")
-    start = time.time()
-    big_list = [i**2 for i in range(10**6)]
-    mem_time = time.time() - start
-    print(f"Time for 1M list: {mem_time:.4f} seconds")
-    
-    score = int(1000 / (cpu_time + mem_time + 0.1))
-    print(f"\nApproximate Performance Score: {score} (higher is better)")
+    x = 0
+    for i in range(1, 5000000):
+        x += math.sin(i) * math.cos(i)
+    end = time.time()
+    duration = end - start
+    score = int(1000 / (duration + 0.1))
+    return duration, score
 
-get_system_info()
-get_cpu_info()
-get_memory_info()
-get_disk_info()
-get_gpu_info()
-run_benchmarks()
-print("\nTest complete!")
+# Memory Benchmark
+def memory_benchmark():
+    print("Running Memory benchmark...")
+    start = time.time()
+    data = [i * i for i in range(10_000_000)]
+    del data
+    end = time.time()
+    duration = end - start
+    return duration
+
+print("Fetching system information...\n")
+
+os_info = get_os_info()
+cpu_info = get_cpu_info()
+mem_info = get_memory_info()
+disks = get_disk_info()
+
+print("Operating System:")
+for k, v in os_info.items():
+    print(f"  {k}: {v}")
+print()
+
+print("CPU:")
+for k, v in cpu_info.items():
+    print(f"  {k}: {v}")
+print()
+
+print("Memory:")
+for k, v in mem_info.items():
+    print(f"  {k}: {v}")
+print()
+
+print("Disks:")
+for disk in disks:
+    print(f"  Device: {disk['Device']} ({disk['Mountpoint']})")
+    print(f"    Total: {disk['Total']} | Free: {disk['Free']} | Usage: {disk['Usage %']}")
+    print()
+
+# Benchmarks
+cpu_time, cpu_score = cpu_benchmark()
+mem_time = memory_benchmark()
+
+print("\nBenchmarks:")
+print(f"CPU Benchmark time: {cpu_time:.2f} seconds")
+print(f"Memory Benchmark time: {mem_time:.2f} seconds")
+print(f"\nOverall Performance Score: {cpu_score}/1000")
+print("(Higher is better - rough estimate)")
+
+print("\n" + "="*60)
+print("Test completed!")
+print("="*60)
